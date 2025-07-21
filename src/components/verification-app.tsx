@@ -3,8 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { CameraCapture } from '@/components/camera-capture';
 import { LocationCapture } from '@/components/location-capture';
-import { CheckCircle, Upload, User, MapPin, LogOut, Clock } from 'lucide-react';
+import { CheckinHistory } from '@/components/checkin-history';
+import { CheckCircle, Upload, User, MapPin, LogOut, Clock, History } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { firebaseStorage } from '@/lib/firebase-storage';
 
 interface LocationData {
   latitude: number;
@@ -19,9 +21,11 @@ interface VerificationAppProps {
 }
 
 type AppState = 'capture' | 'preview' | 'submitting' | 'success';
+type ViewState = 'main' | 'history';
 
 export const VerificationApp: React.FC<VerificationAppProps> = ({ userCode, onLogout }) => {
   const [appState, setAppState] = useState<AppState>('capture');
+  const [viewState, setViewState] = useState<ViewState>('main');
   const [capturedImage, setCapturedImage] = useState<Blob | null>(null);
   const [locationData, setLocationData] = useState<LocationData | null>(null);
   const [submissionId, setSubmissionId] = useState<string>('');
@@ -49,35 +53,58 @@ export const VerificationApp: React.FC<VerificationAppProps> = ({ userCode, onLo
     setAppState('submitting');
 
     try {
-      // Simulate API submission
-      const formData = new FormData();
-      formData.append('selfie', capturedImage);
-      formData.append('location', JSON.stringify(locationData));
-      formData.append('userCode', userCode);
-      formData.append('timestamp', Date.now().toString());
-
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
       // Generate submission ID
       const id = `VER-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 5)}`.toUpperCase();
-      setSubmissionId(id);
       
+      // Store data to Firebase cloud storage
+      const storedCheckin = await firebaseStorage.storeCompleteCheckin(
+        userCode,
+        locationData!,
+        capturedImage!,
+        id
+      );
+
+      setSubmissionId(id);
       setAppState('success');
       
       toast({
-        title: "Verification Submitted",
-        description: "Your check-in has been successfully recorded.",
+        title: "Check-in Stored Successfully",
+        description: `Your selfie and location have been saved to Firebase. ID: ${storedCheckin.id}`,
         variant: "default"
       });
+
+      // Optional: Also attempt to sync to server if available
+      await attemptServerSync(storedCheckin);
+
     } catch (error) {
-      console.error('Submission error:', error);
+      console.error('Storage error:', error);
       setAppState('capture');
       toast({
-        title: "Submission Failed",
-        description: "Unable to submit verification. Please try again.",
+        title: "Storage Failed",
+        description: "Unable to save your check-in data. Please try again.",
         variant: "destructive"
       });
+    }
+  };
+
+  // Optional: Attempt to sync with server (for future backend integration)
+  const attemptServerSync = async (checkinData: any) => {
+    try {
+      // This would be your actual API endpoint
+      // const response = await fetch('/api/checkins', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify(checkinData)
+      // });
+      
+      console.log('Data stored locally. Server sync would happen here:', checkinData);
+      
+      // You could mark the data as synced in storage
+      // await storageService.markAsSynced(checkinData.id);
+      
+    } catch (error) {
+      console.log('Server sync failed, data remains in local storage:', error);
+      // Data is still safely stored locally
     }
   };
 
@@ -87,6 +114,11 @@ export const VerificationApp: React.FC<VerificationAppProps> = ({ userCode, onLo
     setAppState('capture');
     setSubmissionId('');
   };
+
+  // Handle view navigation
+  if (viewState === 'history') {
+    return <CheckinHistory onBack={() => setViewState('main')} />;
+  }
 
   if (appState === 'success') {
     return (
@@ -132,6 +164,15 @@ export const VerificationApp: React.FC<VerificationAppProps> = ({ userCode, onLo
               New Check-in
             </Button>
             <Button 
+              onClick={() => setViewState('history')} 
+              variant="outline" 
+              size="lg" 
+              className="w-full"
+            >
+              <History className="mr-2 h-4 w-4" />
+              View History
+            </Button>
+            <Button 
               onClick={onLogout} 
               variant="outline" 
               size="lg" 
@@ -159,9 +200,24 @@ export const VerificationApp: React.FC<VerificationAppProps> = ({ userCode, onLo
             <User className="h-5 w-5 text-primary mr-2" />
             <span className="font-medium text-foreground">{userCode}</span>
           </div>
-          <Button onClick={onLogout} variant="ghost" size="sm">
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => setViewState('history')} 
+              variant="ghost" 
+              size="sm"
+              disabled={appState === 'submitting'}
+            >
+              <History className="h-4 w-4" />
+            </Button>
+            <Button 
+              onClick={onLogout} 
+              variant="ghost" 
+              size="sm"
+              disabled={appState === 'submitting'}
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
