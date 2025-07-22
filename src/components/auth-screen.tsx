@@ -19,7 +19,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
     if (!inviteCode.trim()) {
       toast({
         title: "Code Required",
-        description: "Please enter your invite code to continue.",
+        description: "Please enter your Employee ID to continue.",
         variant: "destructive"
       });
       return;
@@ -40,7 +40,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onAuthenticated }) => {
       } else {
         toast({
           title: "Invalid Code",
-          description: "Please check your invite code and try again.",
+          description: "Please check your Employee ID and try again.",
           variant: "destructive"
         });
       }
