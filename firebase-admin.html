@@ -602,7 +602,7 @@
                         <i class="fas fa-chart-line"></i>
                     </div>
                 </div>
-                <div class="stat-value" id="totalCheckins">--</div>
+                <div class="stat-value" id="totalCheckins">0</div>
                 <div class="stat-label">Total Check-ins</div>
             </div>
             <div class="stat-card users">
@@ -611,7 +611,7 @@
                         <i class="fas fa-users"></i>
                     </div>
                 </div>
-                <div class="stat-value" id="uniqueUsers">--</div>
+                <div class="stat-value" id="uniqueUsers">0</div>
                 <div class="stat-label">Unique Users</div>
             </div>
             <div class="stat-card today">
@@ -620,7 +620,7 @@
                         <i class="fas fa-calendar-day"></i>
                     </div>
                 </div>
-                <div class="stat-value" id="todayCheckins">--</div>
+                <div class="stat-value" id="todayCheckins">0</div>
                 <div class="stat-label">Today's Check-ins</div>
             </div>
             <div class="stat-card week">
@@ -629,7 +629,7 @@
                         <i class="fas fa-calendar-week"></i>
                     </div>
                 </div>
-                <div class="stat-value" id="thisWeekCheckins">--</div>
+                <div class="stat-value" id="thisWeekCheckins">0</div>
                 <div class="stat-label">This Week</div>
             </div>
         </div>
@@ -800,7 +800,15 @@
         // Animate number changes
         function animateNumber(elementId, targetValue) {
             const element = document.getElementById(elementId);
-            const currentValue = parseInt(element.textContent) || 0;
+            const currentText = element.textContent;
+            const currentValue = currentText === '--' || currentText === '-' || isNaN(parseInt(currentText)) ? 0 : parseInt(currentText);
+            
+            // If values are the same, just set it directly
+            if (currentValue === targetValue) {
+                element.textContent = targetValue;
+                return;
+            }
+            
             const increment = targetValue > currentValue ? 1 : -1;
             let current = currentValue;
 
@@ -808,10 +816,11 @@
                 current += increment;
                 element.textContent = current;
                 
+                // Stop when we reach the target
                 if (current === targetValue) {
                     clearInterval(timer);
                 }
-            }, 50);
+            }, 30);
         }
 
         // Apply filters
